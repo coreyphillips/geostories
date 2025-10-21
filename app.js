@@ -1,4 +1,4 @@
-import { Pubky, Keypair, PublicKey } from '@synonymdev/pubky';
+import { Pubky, Keypair, PublicKey, setLogLevel } from '@synonymdev/pubky';
 
 class GeoStoriesApp {
     constructor() {
@@ -183,7 +183,6 @@ class GeoStoriesApp {
 
             // Enable debug logging
             try {
-                const { setLogLevel } = await import('@synonymdev/pubky');
                 setLogLevel('debug');
                 this.log('Debug logging enabled');
             } catch (err) {
