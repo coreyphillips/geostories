@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoStories - Decentralized Story Mapping</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+    <style id="geocoder-custom-styles">
+        /* Custom Geocoder Styling */
+        .leaflet-control-geocoder {
+            border-radius: 24px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            border: none !important;
+            overflow: hidden;
+        }
+
+        .leaflet-control-geocoder-form {
+            border-radius: 24px !important;
+            background: white !important;
+        }
+
+        .leaflet-control-geocoder-form input {
+            padding: 0.7rem 1rem !important;
+            border: 2px solid #e0e0e0 !important;
+            border-radius: 24px !important;
+            font-size: 0.9rem !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
+            transition: all 0.2s !important;
+            background: #fafafa !important;
+            width: 250px !important;
+        }
+
+        .leaflet-control-geocoder-form input:focus {
+            outline: none !important;
+            border-color: #667eea !important;
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+        }
+
+        .leaflet-control-geocoder-form input::placeholder {
+            color: #999 !important;
+        }
+
+        .leaflet-control-geocoder-alternatives {
+            background: white !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            border: 2px solid #e0e0e0 !important;
+            margin-top: 0.5rem !important;
+            overflow: hidden !important;
+        }
+
+        .leaflet-control-geocoder-alternatives-minimized {
+            display: none !important;
+        }
+
+        .leaflet-control-geocoder-alternative {
+            padding: 0.8rem 1rem !important;
+            border-bottom: 1px solid #f0f0f0 !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+            font-size: 0.9rem !important;
+        }
+
+        .leaflet-control-geocoder-alternative:last-child {
+            border-bottom: none !important;
+        }
+
+        .leaflet-control-geocoder-alternative:hover {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f0ff 100%) !important;
+            padding-left: 1.3rem !important;
+        }
+
+        .leaflet-control-geocoder-alternative-selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+        }
+
+        .leaflet-control-geocoder-icon {
+            background-image: none !important;
+            border-radius: 50% !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            width: 30px !important;
+            height: 30px !important;
+            position: relative !important;
+        }
+
+        .leaflet-control-geocoder-icon::after {
+            content: "🔍" !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            font-size: 14px !important;
+        }
+
+        .leaflet-control-geocoder-expanded .leaflet-control-geocoder-icon {
+            display: none !important;
+        }
+
+        .leaflet-touch .leaflet-control-geocoder-icon {
+            width: 30px !important;
+            height: 30px !important;
+        }
+    </style>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .header-left {
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 0.2rem;
+        }
+
+        .header-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .header-search {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 500px;
+            flex: 1;
+        }
+
+        .header-search input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.7rem 1.2rem;
+            border: none;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s;
+        }
+
+        .header-search input:focus {
+            outline: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: white;
+        }
+
+        .header-search input::placeholder {
+            color: #999;
+        }
+
+        .header-search button {
+            padding: 0.7rem 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            width: auto;
+            min-width: 80px;
+        }
+
+        .header-search button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .friends-btn {
+            padding: 0.6rem 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            width: auto;
+        }
+
+        .friends-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .friends-btn.hidden {
+            display: none;
+        }
+
+        /* Friends Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        /* Custom scrollbar for modal */
+        .modal::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+
+        .modal::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+        }
+
+        .modal::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h2 {
+            margin: 0 0 1.5rem 0;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            width: auto;
+            padding: 0.5rem;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .friends-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .friend-item {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .friend-item:hover {
+            transform: translateX(4px) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            border-left-color: #764ba2;
+        }
+
+        .friend-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #667eea;
+            flex-shrink: 0;
+        }
+
+        .friend-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .friend-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.2rem;
+            font-size: 1rem;
+        }
+
+        .friend-bio {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .friend-pubkey {
+            font-size: 0.7rem;
+            color: #999;
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .friend-markers {
+            font-size: 0.85rem;
+            color: #667eea;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .loading-friends {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .no-friends {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+
+        .show-all-btn {
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            margin-bottom: 1rem;
+        }
+
+        .show-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .show-all-btn:active {
+            transform: translateY(0);
+        }
+
+        .friend-legend {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 350px;
+            min-width: 280px;
+            max-width: 600px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .resize-handle:hover,
+        .resize-handle.dragging {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .resize-handle::before {
+            content: '';
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2px;
+            height: 40px;
+            background: #ddd;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .resize-handle:hover::before,
+        .resize-handle.dragging::before {
+            background: white;
+            height: 60px;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        /* Custom scrollbar styling */
+        .sidebar-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        .status {
+            padding: 0.6rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .status.compact {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status.connected {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            box-shadow: 0 2px 6px rgba(21, 87, 36, 0.1);
+        }
+
+        .status.disconnected {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            box-shadow: 0 2px 6px rgba(114, 28, 36, 0.1);
+        }
+
+        .status.testnet {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            box-shadow: 0 2px 6px rgba(133, 100, 4, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+
+        input:hover,
+        textarea:hover {
+            border-color: #ccc;
+            background: #fff;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input[type="file"] {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .small-text {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .marker-list {
+            list-style: none;
+        }
+
+        .marker-item {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .marker-item:hover {
+            transform: translateX(4px) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            border-left-color: #764ba2;
+        }
+
+        .marker-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+
+        .marker-desc {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .marker-meta {
+            font-size: 0.75rem;
+            color: #999;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.7rem;
+            background: #f0f0f0;
+            color: #666;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-btn:hover {
+            background: #e5e5e5;
+            color: #333;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-btn.active:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .photo-preview {
+            max-width: 100%;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .coordinates {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.3rem;
+        }
+
+        #qrContainer {
+            display: none;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        #qrContainer h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        #qrCode {
+            margin: 0 auto 1rem;
+            display: block;
+        }
+
+        #deeplink {
+            display: block;
+            font-size: 0.75rem;
+            color: #667eea;
+            word-break: break-all;
+            padding: 0.5rem;
+            background: #f5f5f5;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 0.5rem;
+        }
+
+        .auth-instructions {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .marker-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .marker-actions button {
+            flex: 1;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .edit-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .edit-btn:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #da190b;
+            transform: translateY(-1px);
+        }
+
+        .popup-actions {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+        }
+
+        .popup-actions button {
+            flex: 1;
+            padding: 0.3rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 3px;
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 1024px) {
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+
+            .header-search {
+                max-width: 100%;
+            }
+
+            .sidebar {
+                width: 320px;
+                min-width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 0.8rem;
+            }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100% !important;
+                max-width: 100%;
+                height: 40vh;
+                border-bottom: 2px solid #e0e0e0;
+            }
+
+            .resize-handle {
+                display: none;
+            }
+
+            #map {
+                height: 60vh;
+            }
+        }
+
+        /* Smooth transitions */
+        * {
+            scroll-behavior: smooth;
+        }
+
+        /* Focus visible for accessibility */
+        *:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>GeoStories</h1>
+            <div class="subtitle">Decentralized story mapping powered by Pubky</div>
+        </div>
+        <div class="header-right">
+            <button id="friendsBtn" class="friends-btn hidden" onclick="app.showFriendsModal()">View Friends (0)</button>
+            <div class="header-search">
+                <input type="text" id="pubkyInputHeader" placeholder="Enter pubky to view markers..." onkeypress="if(event.key === 'Enter') app.loadUserMarkersFromHeader()">
+                <button onclick="app.loadUserMarkersFromHeader()">Load</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar" id="sidebar">
+            <div class="resize-handle" id="resizeHandle"></div>
+            <div class="sidebar-section">
+                <div id="status" class="status testnet">
+                    Connecting to Pubky...
+                </div>
+
+                <button id="connectBtn" onclick="app.connect()" class="hidden">Connect to Pubky</button>
+
+                <div id="qrContainer">
+                    <h3>Scan to Authorize</h3>
+                    <div id="qrCode" style="display: flex; justify-content: center;"></div>
+                    <p class="auth-instructions">
+                        Scan this QR code with Pubky Ring or your authenticator app to grant GeoStories permission to write markers.
+                    </p>
+                    <a id="deeplink" target="_blank"></a>
+                </div>
+
+                <div style="margin-top: 1rem;" id="authBtnContainer" class="hidden">
+                    <button id="authWithQRBtn" onclick="app.startAuthFlow()">Authorize with QR Code</button>
+                </div>
+            </div>
+
+            <div class="sidebar-content">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="app.switchTab('add')">Add Story</button>
+                    <button class="tab-btn" onclick="app.switchTab('view')">View Stories</button>
+                </div>
+
+                <!-- Add Marker Tab -->
+                <div id="addTab" class="tab-content active">
+                    <div class="help-text">Click on the map to set marker location</div>
+
+                    <form id="markerForm" onsubmit="app.addMarker(event)">
+                        <div class="form-group coordinates">
+                            <div>
+                                <label for="latitude">Latitude</label>
+                                <input type="number" id="latitude" step="any" required readonly>
+                            </div>
+                            <div>
+                                <label for="longitude">Longitude</label>
+                                <input type="number" id="longitude" step="any" required readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="title">Story Title</label>
+                            <input type="text" id="title" required placeholder="A memorable moment...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" required placeholder="Tell your story..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="photo">Add Photo (optional)</label>
+                            <input type="file" id="photo" accept="image/*" onchange="app.previewPhoto(event)">
+                            <img id="photoPreview" class="photo-preview" style="display: none;">
+                        </div>
+
+                        <button type="submit" id="submitBtn" disabled>Add Story to Map</button>
+                    </form>
+                </div>
+
+                <!-- View Markers Tab -->
+                <div id="viewTab" class="tab-content">
+                    <div id="markerList" class="loading">
+                        No markers loaded. Connect and add your first story!
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main id="map"></main>
+    </div>
+
+    <!-- Friends Modal -->
+    <div id="friendsModal" class="modal-overlay" onclick="if(event.target === this) app.closeFriendsModal()">
+        <div class="modal">
+            <h2>Friends with GeoStories</h2>
+            <div id="friendsListContainer">
+                <div class="loading-friends">Loading friends...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Geocoder JS -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <!-- QRCode.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- App Script -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
