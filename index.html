@@ -89,18 +89,40 @@
             background-image: none !important;
             border-radius: 50% !important;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            width: 30px !important;
-            height: 30px !important;
+            width: 34px !important;
+            height: 34px !important;
             position: relative !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+        }
+
+        .leaflet-control-geocoder-icon:hover {
+            transform: scale(1.1) rotate(12deg) !important;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5) !important;
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        }
+
+        .leaflet-control-geocoder-icon:active {
+            transform: scale(0.95) !important;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4) !important;
         }
 
         .leaflet-control-geocoder-icon::after {
             content: "🔍" !important;
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            font-size: 14px !important;
+            font-size: 17px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .leaflet-control-geocoder-icon:hover::after {
+            transform: scale(1.05) !important;
         }
 
         .leaflet-control-geocoder-expanded .leaflet-control-geocoder-icon {
@@ -108,8 +130,8 @@
         }
 
         .leaflet-touch .leaflet-control-geocoder-icon {
-            width: 30px !important;
-            height: 30px !important;
+            width: 34px !important;
+            height: 34px !important;
         }
     </style>
 
