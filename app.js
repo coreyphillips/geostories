@@ -61,6 +61,12 @@ class GeoStoriesApp {
         });
 
         this.connect(); // Auto-connect on page load
+
+        // Check for pubky in URL path and load markers
+        this.checkUrlForPubky();
+
+        // Initialize browser navigation (back/forward buttons)
+        this.initUrlNavigation();
     }
 
     // Handle responsive layout changes
@@ -194,6 +200,108 @@ class GeoStoriesApp {
             // Check if click is outside the user menu
             if (!userMenu.contains(e.target)) {
                 dropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // ==================== URL Deep Linking ====================
+
+    // Update the browser URL to reflect the current pubky being viewed
+    updateUrlForPubky(pubky) {
+        if (!pubky) {
+            // If no pubky, reset to home
+            window.history.pushState({ pubky: null }, '', '/');
+            return;
+        }
+
+        // Strip 'pk:' prefix if present
+        const cleanPubky = pubky.replace(/^pk:/, '');
+
+        // Update URL without reloading the page
+        const newUrl = `/${cleanPubky}`;
+        window.history.pushState({ pubky: cleanPubky }, '', newUrl);
+        this.log(`URL updated to: ${newUrl}`);
+    }
+
+    // Check URL for pubky parameter and auto-load markers
+    checkUrlForPubky() {
+        // Get the path from the URL (everything after the domain)
+        const path = window.location.pathname;
+
+        // Extract pubky from path like /q9x5sfjbpajdebk45b9jashgb86iem7rnwpmu16px3ens63xzwro
+        // or /pk:q9x5sfjbpajdebk45b9jashgb86iem7rnwpmu16px3ens63xzwro
+        // Remove leading slash if present
+        let pubky = path.replace(/^\//, '').trim();
+
+        // Strip 'pk:' prefix if present
+        pubky = pubky.replace(/^pk:/, '');
+
+        // Basic validation: pubky should be a long alphanumeric string (typically 52 chars)
+        // and shouldn't be empty or a common path like 'index.html'
+        if (pubky && pubky.length > 40 && /^[a-z0-9]+$/.test(pubky)) {
+            this.log(`Found pubky in URL: ${pubky}`);
+
+            // Wait for pubky client to initialize, then load markers
+            const loadFromUrl = async () => {
+                // Wait a bit longer for pubky to be ready
+                let attempts = 0;
+                while (!this.pubky && attempts < 20) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                if (this.pubky) {
+                    // Set the pubky in the header search box
+                    document.getElementById('pubkyInputHeader').value = pubky;
+
+                    // Load the markers for this pubky (skip URL update since we're loading from URL)
+                    this.loadUserMarkers(pubky, false);
+
+                    this.log(`Auto-loading markers from URL for: ${pubky.substring(0, 16)}...`);
+                } else {
+                    this.log('Pubky client not ready, skipping URL auto-load');
+                }
+            };
+
+            loadFromUrl();
+        }
+    }
+
+    // Handle browser back/forward navigation
+    initUrlNavigation() {
+        window.addEventListener('popstate', (event) => {
+            this.log(`Popstate event fired. State: ${JSON.stringify(event.state)}`);
+            this.log(`Current pathname: ${window.location.pathname}`);
+
+            const pubky = event.state?.pubky;
+
+            if (pubky) {
+                // User navigated back/forward to a specific pubky
+                this.log(`Navigating to pubky from browser history: ${pubky.substring(0, 16)}...`);
+                document.getElementById('pubkyInputHeader').value = pubky;
+                this.loadUserMarkers(pubky, false); // false = don't update URL
+            } else {
+                // User navigated back to home - try to extract pubky from URL
+                const path = window.location.pathname;
+                let pubkyFromPath = path.replace(/^\//, '').trim();
+
+                // Strip 'pk:' prefix if present
+                pubkyFromPath = pubkyFromPath.replace(/^pk:/, '');
+
+                this.log(`No state found. Extracted pubky from path: ${pubkyFromPath}`);
+
+                // Check if path contains a valid pubky
+                if (pubkyFromPath && pubkyFromPath.length > 40 && /^[a-z0-9]+$/.test(pubkyFromPath)) {
+                    this.log(`Loading markers from path: ${pubkyFromPath.substring(0, 16)}...`);
+                    document.getElementById('pubkyInputHeader').value = pubkyFromPath;
+                    this.loadUserMarkers(pubkyFromPath, false);
+                } else {
+                    this.log('Navigating to home from browser history');
+                    document.getElementById('pubkyInputHeader').value = this.currentPubky || '';
+                    if (this.currentPubky) {
+                        this.loadUserMarkers(this.currentPubky, false);
+                    }
+                }
             }
         });
     }
@@ -456,9 +564,9 @@ class GeoStoriesApp {
     // Go home (back to user's own markers)
     goHome() {
         if (this.currentPubky) {
-            // Load user's own markers
+            // Load user's own markers and update URL
             document.getElementById('pubkyInputHeader').value = this.currentPubky;
-            this.loadUserMarkers(this.currentPubky);
+            this.loadUserMarkers(this.currentPubky, true);
             this.log('Returning to your markers');
         } else {
             this.log('Not authenticated yet - cannot return to home view');
@@ -618,9 +726,19 @@ class GeoStoriesApp {
                 // Enable the submit button since we have write capabilities via cookies
                 document.getElementById('submitBtn').disabled = false;
 
-                // Load friends and markers
+                // Load friends
                 this.loadFriendsWithMarkers();
-                this.loadUserMarkers(this.currentPubky);
+
+                // Only auto-load user's own markers if URL doesn't contain a pubky
+                const path = window.location.pathname.replace(/^\//, '').trim();
+                let pubkyInUrl = path.replace(/^pk:/, '');
+
+                // Check if URL has a valid pubky (and it's not the user's own)
+                if (!pubkyInUrl || pubkyInUrl.length <= 40 || !/^[a-z0-9]+$/.test(pubkyInUrl)) {
+                    // No valid pubky in URL, load user's own markers
+                    this.loadUserMarkers(this.currentPubky);
+                }
+                // Otherwise, let checkUrlForPubky() handle loading the markers from the URL
             }
         } catch (error) {
             this.showError('Failed to connect: ' + error.message);
@@ -947,6 +1065,9 @@ class GeoStoriesApp {
     async showAllFriendsMarkers() {
         this.closeFriendsModal();
 
+        // Reset URL to base domain
+        window.history.pushState({ pubky: null }, '', '/');
+
         try {
             this.updateStatus('Loading all friends\' markers...', 'testnet');
 
@@ -1210,7 +1331,7 @@ class GeoStoriesApp {
     }
 
     // Load markers for a specific user
-    async loadUserMarkers(pubky = null) {
+    async loadUserMarkers(pubky = null, updateUrl = true) {
         const targetPubky = pubky || document.getElementById('pubkyInput').value.trim();
 
         if (!targetPubky) {
@@ -1218,15 +1339,23 @@ class GeoStoriesApp {
             return;
         }
 
+        // Strip 'pk:' prefix if present
+        const cleanPubky = targetPubky.replace(/^pk:/, '');
+
+        // Update URL to reflect the pubky being viewed
+        if (updateUrl) {
+            this.updateUrlForPubky(cleanPubky);
+        }
+
         try {
-            this.updateStatus(`Loading markers for ${targetPubky.substring(0, 16)}...`, 'testnet');
+            this.updateStatus(`Loading markers for ${cleanPubky.substring(0, 16)}...`, 'testnet');
             document.getElementById('markerList').innerHTML = '<div class="loading">Loading markers...</div>';
 
             // Clear existing markers from map
             this.clearMapMarkers();
 
             // List all marker files
-            const markerPath = `pubky${targetPubky}/pub/geostories.app/markers/`;
+            const markerPath = `pubky://${cleanPubky}/pub/geostories.app/markers/`;
             const files = await this.pubky.publicStorage.list(markerPath);
 
             const jsonFiles = files.filter(f => f.endsWith('.json'));
