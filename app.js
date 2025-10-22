@@ -105,6 +105,18 @@ class GeoStoriesApp {
         }
     }
 
+    // Go home (back to user's own markers)
+    goHome() {
+        if (this.currentPubky) {
+            // Load user's own markers
+            document.getElementById('pubkyInputHeader').value = this.currentPubky;
+            this.loadUserMarkers(this.currentPubky);
+            this.log('Returning to your markers');
+        } else {
+            this.log('Not authenticated yet - cannot return to home view');
+        }
+    }
+
     // Initialize Leaflet map
     initMap() {
         // Create map centered on New Orleans, LA
@@ -587,11 +599,8 @@ class GeoStoriesApp {
     showAuthUI(authUrl) {
         const qrContainer = document.getElementById('qrContainer');
         const qrCodeDiv = document.getElementById('qrCode');
-        const deeplinkEl = document.getElementById('deeplink');
 
-        // Show container and deeplink immediately
-        deeplinkEl.textContent = authUrl;
-        deeplinkEl.href = authUrl;
+        // Show container
         qrContainer.style.display = 'block';
 
         // Clear any existing QR code
@@ -609,6 +618,15 @@ class GeoStoriesApp {
                     correctLevel: QRCode.CorrectLevel.H
                 });
                 this.log('QR code displayed - scan with authenticator app');
+
+                // Make QR code clickable to open deeplink
+                qrCodeDiv.style.cursor = 'pointer';
+                qrCodeDiv.onclick = () => {
+                    // Convert pubky:// URL to pubkyring:// deeplink
+                    const deeplinkUrl = 'pubkyring://' + authUrl;
+                    window.location.href = deeplinkUrl;
+                    this.log(`Opening Pubky Ring with deeplink: ${deeplinkUrl}`);
+                };
             } else {
                 console.error('QRCode library not loaded');
             }

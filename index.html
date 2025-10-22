@@ -137,6 +137,20 @@
 
         .header-left {
             flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: -0.5rem;
+        }
+
+        .header-left:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .header-left:active {
+            transform: translateY(0);
         }
 
         h1 {
@@ -807,18 +821,11 @@
         #qrCode {
             margin: 0 auto 1rem;
             display: block;
+            transition: transform 0.2s;
         }
 
-        #deeplink {
-            display: block;
-            font-size: 0.75rem;
-            color: #667eea;
-            word-break: break-all;
-            padding: 0.5rem;
-            background: #f5f5f5;
-            border-radius: 4px;
-            text-decoration: none;
-            margin-top: 0.5rem;
+        #qrCode:hover {
+            transform: scale(1.05);
         }
 
         .auth-instructions {
@@ -946,7 +953,7 @@
 </head>
 <body>
     <header>
-        <div class="header-left">
+        <div class="header-left" onclick="app.goHome()" title="Click to return to your markers">
             <h1>GeoStories</h1>
             <div class="subtitle">Decentralized story mapping powered by Pubky</div>
         </div>
@@ -970,12 +977,11 @@
                 <button id="connectBtn" onclick="app.connect()" class="hidden">Connect to Pubky</button>
 
                 <div id="qrContainer">
-                    <h3>Scan to Authorize</h3>
+                    <h3>Scan or Click to Authorize</h3>
                     <div id="qrCode" style="display: flex; justify-content: center;"></div>
                     <p class="auth-instructions">
-                        Scan this QR code with Pubky Ring or your authenticator app to grant GeoStories permission to write markers.
+                        Scan this QR code or click it to open Pubky Ring and grant GeoStories permission to write markers.
                     </p>
-                    <a id="deeplink" target="_blank"></a>
                 </div>
 
                 <div style="margin-top: 1rem;" id="authBtnContainer" class="hidden">
