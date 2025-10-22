@@ -1268,8 +1268,8 @@ class GeoStoriesApp {
 
     // Add marker to Leaflet map with optional custom color
     addMarkerToMap(marker, customColor = null) {
-        // Determine marker color
-        let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+        // Determine marker color - default to violet to match app theme
+        let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png';
 
         if (customColor) {
             // Use colored marker - map hex colors to available marker colors
@@ -1279,7 +1279,7 @@ class GeoStoriesApp {
                 '#45B7D1': 'blue',
                 '#FFA07A': 'orange',
                 '#98D8C8': 'green',
-                '#F7B731': 'yellow',
+                '#F7B731': 'gold',
                 '#5F27CD': 'violet',
                 '#00D2D3': 'blue',
                 '#FF9FF3': 'red',
@@ -1291,25 +1291,28 @@ class GeoStoriesApp {
                 '#00B894': 'green',
                 '#6C5CE7': 'violet',
                 '#FD79A8': 'red',
-                '#FDCB6E': 'yellow',
+                '#FDCB6E': 'gold',
                 '#74B9FF': 'blue',
                 '#A29BFE': 'violet'
             };
 
-            const markerColor = colorMapping[customColor] || 'blue';
+            const markerColor = colorMapping[customColor] || 'violet';
             iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${markerColor}.png`;
         }
 
         // Create marker icon
+        const markerIcon = L.icon({
+            iconUrl: iconUrl,
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Create marker layer
         const markerLayer = L.marker([marker.latitude, marker.longitude], {
-            icon: L.icon({
-                iconUrl: iconUrl,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            })
+            icon: markerIcon
         }).addTo(this.map);
 
         // Check if current user owns this marker
@@ -1382,7 +1385,10 @@ class GeoStoriesApp {
                     ` : '';
 
                     return `
-                        <li class="marker-item" onclick="app.focusMarker('${m.id}')">
+                        <li class="marker-item"
+                            onclick="app.focusMarker('${m.id}')"
+                            onmouseenter="app.highlightMapMarker('${m.id}', true)"
+                            onmouseleave="app.highlightMapMarker('${m.id}', false)">
                             <div class="marker-title">${m.title}</div>
                             <div class="marker-desc">${m.description}</div>
                             <div class="marker-meta">
@@ -1394,6 +1400,35 @@ class GeoStoriesApp {
                 }).join('')}
             </ul>
         `;
+    }
+
+    // Highlight or unhighlight a marker on the map
+    highlightMapMarker(markerId, highlight) {
+        const markerLayer = this.markerLayers.get(markerId);
+
+        if (!markerLayer) {
+            console.log('No marker layer found for:', markerId);
+            return;
+        }
+
+        // Get the marker's DOM element
+        const markerElement = markerLayer.getElement();
+
+        if (!markerElement) {
+            console.log('No DOM element found for marker:', markerId);
+            return;
+        }
+
+        if (highlight) {
+            // Add CSS class for instant visual feedback
+            markerElement.classList.add('marker-highlighted');
+            markerLayer.setZIndexOffset(1000); // Bring to front
+            console.log('Highlighted marker:', markerId, markerElement);
+        } else {
+            // Remove highlight class
+            markerElement.classList.remove('marker-highlighted');
+            markerLayer.setZIndexOffset(0); // Reset z-index
+        }
     }
 
     // Focus on a specific marker on the map
