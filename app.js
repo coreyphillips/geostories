@@ -1,4 +1,5 @@
 import { Pubky, Keypair, PublicKey, setLogLevel } from '@synonymdev/pubky';
+import * as jdenticon from 'jdenticon';
 
 class GeoStoriesApp {
     constructor() {
@@ -15,6 +16,10 @@ class GeoStoriesApp {
         this.editingMarkerId = null; // Track which marker is being edited
         this.friendsWithMarkers = []; // Cache of friends with GeoStory markers
         this.friendColorMap = new Map(); // Map friend pubkeys to colors
+
+        // Session persistence constants
+        this.SESSION_STORAGE_KEY = 'geostories_session';
+        this.SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
         // Color palette for friends (vibrant, distinguishable colors)
         this.friendColors = [
@@ -42,8 +47,318 @@ class GeoStoriesApp {
 
         this.initMap();
         this.initResizableSidebar();
+        this.initUserMenuClickOutside();
+        this.initMobileSidebarToggle();
+        this.initResponsiveHandler();
+
+        // Try to restore session before connecting
+        this.sessionRestored = false;
+        this.restoreSession().then(restored => {
+            this.sessionRestored = restored;
+        });
+
         this.connect(); // Auto-connect on page load
     }
+
+    // Handle responsive layout changes
+    initResponsiveHandler() {
+        let resizeTimer;
+        let currentMode = null;
+
+        const updateMode = () => {
+            const header = document.querySelector('header');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobileBackdrop');
+            const container = document.querySelector('.container');
+            const isDesktop = window.innerWidth > 768;
+
+            // Avoid redundant updates
+            if (currentMode === (isDesktop ? 'desktop' : 'mobile')) {
+                return;
+            }
+
+            currentMode = isDesktop ? 'desktop' : 'mobile';
+
+            if (isDesktop) {
+                // Desktop mode
+                header.classList.add('desktop-mode');
+                header.classList.remove('mobile-hidden');
+                sidebar.classList.add('desktop-mode');
+                sidebar.classList.remove('show');
+                container.classList.add('desktop-mode');
+                backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                // Mobile mode
+                header.classList.remove('desktop-mode');
+                header.classList.remove('mobile-hidden');
+                sidebar.classList.remove('desktop-mode');
+                container.classList.remove('desktop-mode');
+                sidebar.classList.remove('show');
+                backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            // Invalidate map size
+            if (this.map) {
+                requestAnimationFrame(() => {
+                    this.map.invalidateSize();
+                });
+            }
+        };
+
+        // Set initial mode
+        updateMode();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(updateMode, 100);
+        });
+
+        // Handle orientation changes on mobile devices
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateMode, 50);
+        });
+    }
+
+    // Initialize mobile sidebar toggle
+    initMobileSidebarToggle() {
+        // Mobile-specific functionality is handled by showMobileAddStory and showMobileStories
+    }
+
+    // Show Add Story form on mobile
+    showMobileAddStory() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        const header = document.querySelector('header');
+
+        // Show Add Story tab
+        this.switchTab('add');
+
+        // Hide header on mobile to maximize map view
+        if (window.innerWidth <= 768) {
+            header.classList.add('mobile-hidden');
+        }
+
+        // Show sidebar with backdrop
+        sidebar.classList.add('show');
+        backdrop.classList.add('active');
+    }
+
+    // Show View Stories on mobile
+    showMobileStories() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        const header = document.querySelector('header');
+
+        // Show View Stories tab
+        this.switchTab('view');
+
+        // Hide header on mobile to maximize map view
+        if (window.innerWidth <= 768) {
+            header.classList.add('mobile-hidden');
+        }
+
+        // Show sidebar with backdrop
+        sidebar.classList.add('show');
+        backdrop.classList.add('active');
+    }
+
+    // Close mobile sidebar
+    closeMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        const header = document.querySelector('header');
+
+        // Show header again
+        header.classList.remove('mobile-hidden');
+
+        sidebar.classList.remove('show');
+        backdrop.classList.remove('active');
+    }
+
+    // Initialize click-outside handler for user menu
+    initUserMenuClickOutside() {
+        document.addEventListener('click', (e) => {
+            const userMenu = document.getElementById('userMenu');
+            const dropdown = document.getElementById('userDropdown');
+
+            if (!userMenu || userMenu.classList.contains('hidden')) {
+                return;
+            }
+
+            // Check if click is outside the user menu
+            if (!userMenu.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // ==================== Session Persistence Methods ====================
+
+    // Save session to localStorage
+    saveSession() {
+        if (!this.session || !this.currentPubky) {
+            return;
+        }
+
+        try {
+            const sessionData = {
+                currentPubky: this.currentPubky,
+                timestamp: Date.now(),
+                // Store minimal session info - the session object itself may not be serializable
+                sessionInfo: {
+                    publicKey: this.session.info?.publicKey?.z32() || this.currentPubky,
+                    capabilities: this.session.info?.capabilities || []
+                }
+            };
+
+            localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+            this.log('Session saved to localStorage');
+        } catch (error) {
+            this.log(`Failed to save session: ${error.message}`);
+        }
+    }
+
+    // Load session from localStorage
+    loadSession() {
+        try {
+            const stored = localStorage.getItem(this.SESSION_STORAGE_KEY);
+            if (!stored) {
+                return null;
+            }
+
+            const data = JSON.parse(stored);
+
+            // Check if session is too old
+            if (Date.now() - data.timestamp > this.SESSION_MAX_AGE) {
+                this.log('Stored session expired, removing...');
+                localStorage.removeItem(this.SESSION_STORAGE_KEY);
+                return null;
+            }
+
+            return data;
+        } catch (error) {
+            this.log(`Failed to load session: ${error.message}`);
+            return null;
+        }
+    }
+
+    // Restore session on app load
+    async restoreSession() {
+        const sessionData = this.loadSession();
+
+        if (!sessionData) {
+            this.log('No stored session found');
+            return false;
+        }
+
+        this.log(`Restoring session for ${sessionData.currentPubky.substring(0, 16)}...`);
+        this.currentPubky = sessionData.currentPubky;
+
+        // Note: The actual session is maintained via cookies from the homeserver
+        // We just need to restore the pubky and recreate the session object that
+        // uses those cookies for authentication
+
+        // Update UI to show restored state - wait for DOM to be ready
+        setTimeout(() => {
+            document.getElementById('pubkyInputHeader').value = this.currentPubky;
+            this.updateStatus(`Session restored for: ${this.currentPubky.substring(0, 16)}...`, 'connected');
+
+            // Hide auth button since we have a valid session (via cookies)
+            document.getElementById('authBtnContainer').classList.add('hidden');
+
+            // Show user menu and friends button
+            this.updateUserMenuUI(this.currentPubky);
+            document.getElementById('friendsBtn').classList.remove('hidden');
+
+            this.log('Session restored with existing cookies.');
+
+            // Don't load markers yet - wait for pubky to be initialized
+            // This will be handled in connect() method
+        }, 100);
+
+        return true;
+    }
+
+    // Clear saved session
+    clearSession() {
+        try {
+            localStorage.removeItem(this.SESSION_STORAGE_KEY);
+            this.log('Session cleared from localStorage');
+        } catch (error) {
+            this.log(`Failed to clear session: ${error.message}`);
+        }
+    }
+
+    // Clear all cookies
+    clearCookies() {
+        if (typeof document !== 'undefined') {
+            document.cookie.split(';').forEach((cookie) => {
+                const eqPos = cookie.indexOf('=');
+                const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = `${name.trim()}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+            });
+            this.log('Cookies cleared');
+        }
+    }
+
+    // Toggle user menu dropdown
+    toggleUserMenu() {
+        const dropdown = document.getElementById('userDropdown');
+        dropdown.classList.toggle('hidden');
+    }
+
+    // Update user menu UI
+    updateUserMenuUI(pubky) {
+        const userMenu = document.getElementById('userMenu');
+        const userInitials = document.getElementById('userInitials');
+        const userPubkyDisplay = document.getElementById('userPubkyDisplay');
+
+        if (pubky) {
+            // Show user menu
+            userMenu.classList.remove('hidden');
+
+            // Generate jdenticon SVG (size 42 to match avatar size)
+            const svg = jdenticon.toSvg(pubky, 42);
+            userInitials.innerHTML = svg;
+
+            // Set pubky display (truncated)
+            const displayPubky = `${pubky.substring(0, 8)}...${pubky.substring(pubky.length - 8)}`;
+            userPubkyDisplay.textContent = displayPubky;
+        } else {
+            // Hide user menu
+            userMenu.classList.add('hidden');
+        }
+    }
+
+    // Logout and clear session
+    logout() {
+        // Close dropdown
+        document.getElementById('userDropdown').classList.add('hidden');
+
+        this.session = null;
+        this.currentPubky = null;
+        this.clearSession();
+        this.clearCookies();
+
+        // Reset UI
+        document.getElementById('authBtnContainer').classList.remove('hidden');
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('friendsBtn').classList.add('hidden');
+        document.getElementById('pubkyInputHeader').value = '';
+        this.updateUserMenuUI(null);
+
+        // Clear markers
+        this.clearMapMarkers();
+        document.getElementById('markerList').innerHTML = '<div class="loading">No markers loaded. Connect and add your first story!</div>';
+
+        this.updateStatus('Logged out. Click "Authorize with QR Code" to sign in', 'testnet');
+        this.log('Logged out successfully');
+    }
+
+    // ==================== End Session Persistence Methods ====================
 
     // Get color for a friend
     getFriendColor(pubkey) {
@@ -187,7 +502,14 @@ class GeoStoriesApp {
     // Connect to Pubky
     async connect() {
         try {
-            this.updateStatus('Connecting to Pubky...', 'connected');
+            // Wait a moment to see if session was restored
+            await new Promise(resolve => setTimeout(resolve, 150));
+
+            const hadSession = !!this.currentPubky;
+
+            if (!hadSession) {
+                this.updateStatus('Connecting to Pubky...', 'connected');
+            }
 
             // Initialize Pubky in mainnet mode (for production)
             // For testnet, use: this.pubky = Pubky.testnet();
@@ -201,11 +523,72 @@ class GeoStoriesApp {
                 console.warn('Could not enable debug logging:', err);
             }
 
-            this.updateStatus('Connected - Click "Authorize with QR Code" to sign in', 'testnet');
-            this.log('Connected to Pubky');
+            if (!hadSession) {
+                this.updateStatus('Connected - Click "Authorize with QR Code" to sign in', 'testnet');
+                this.log('Connected to Pubky');
 
-            // Show auth button, keep connect button hidden
-            document.getElementById('authBtnContainer').classList.remove('hidden');
+                // Show auth button, keep connect button hidden
+                document.getElementById('authBtnContainer').classList.remove('hidden');
+            } else {
+                this.log('Connected to Pubky (session already restored)');
+
+                // Create a minimal session object that uses the existing cookies
+                // The cookies handle the actual authentication with the homeserver
+                // We create a storage-like object that uses Client.fetch() with credentials: 'include'
+                const pubkyPublicKey = PublicKey.from(this.currentPubky);
+
+                // Create a custom storage object that mimics SessionStorage but uses Client.fetch
+                const customStorage = {
+                    putJson: async (path, data) => {
+                        const url = `https://_pubky.${this.currentPubky}${path}`;
+                        const response = await this.pubky.client.fetch(url, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data),
+                            credentials: 'include'
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Failed to put JSON: ${response.statusText}`);
+                        }
+                    },
+                    putBytes: async (path, bytes) => {
+                        const url = `https://_pubky.${this.currentPubky}${path}`;
+                        const response = await this.pubky.client.fetch(url, {
+                            method: 'PUT',
+                            body: bytes,
+                            credentials: 'include'
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Failed to put bytes: ${response.statusText}`);
+                        }
+                    },
+                    delete: async (path) => {
+                        const url = `https://_pubky.${this.currentPubky}${path}`;
+                        const response = await this.pubky.client.fetch(url, {
+                            method: 'DELETE',
+                            credentials: 'include'
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Failed to delete: ${response.statusText}`);
+                        }
+                    }
+                };
+
+                this.session = {
+                    info: {
+                        publicKey: pubkyPublicKey,
+                        capabilities: ['/pub/geostories.app/:rw']
+                    },
+                    storage: customStorage
+                };
+
+                // Enable the submit button since we have write capabilities via cookies
+                document.getElementById('submitBtn').disabled = false;
+
+                // Load friends and markers
+                this.loadFriendsWithMarkers();
+                this.loadUserMarkers(this.currentPubky);
+            }
         } catch (error) {
             this.showError('Failed to connect: ' + error.message);
             console.error(error);
@@ -287,12 +670,16 @@ class GeoStoriesApp {
 
     // Called after successful authentication
     onAuthenticated() {
+        // Save session to localStorage for persistence
+        this.saveSession();
+
         // Hide auth button, enable submit button
         document.getElementById('authBtnContainer').classList.add('hidden');
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('pubkyInputHeader').value = this.currentPubky;
 
-        // Show friends button and load friends
+        // Show user menu and friends button
+        this.updateUserMenuUI(this.currentPubky);
         document.getElementById('friendsBtn').classList.remove('hidden');
         this.loadFriendsWithMarkers();
 
