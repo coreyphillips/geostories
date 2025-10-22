@@ -51,6 +51,9 @@ class GeoStoriesApp {
         this.initMobileSidebarToggle();
         this.initResponsiveHandler();
 
+        // Initialize mobile FAB to unauthenticated state
+        this.updateMobileFAB(false);
+
         // Try to restore session before connecting
         this.sessionRestored = false;
         this.restoreSession().then(restored => {
@@ -330,6 +333,28 @@ class GeoStoriesApp {
         } else {
             // Hide user menu
             userMenu.classList.add('hidden');
+        }
+
+        // Update mobile FAB buttons based on auth state
+        this.updateMobileFAB(!!pubky);
+    }
+
+    // Update mobile FAB buttons based on authentication state
+    updateMobileFAB(isAuthenticated) {
+        const mobileFabAdd = document.getElementById('mobileFabAdd');
+        const mobileFabSignIn = document.getElementById('mobileFabSignIn');
+        const mobileFabStories = document.getElementById('mobileFabStories');
+
+        if (isAuthenticated) {
+            // Show add button, hide sign-in button
+            mobileFabAdd.style.display = 'flex';
+            mobileFabSignIn.style.display = 'none';
+            mobileFabStories.style.display = 'flex';
+        } else {
+            // Hide add button, show sign-in button
+            mobileFabAdd.style.display = 'none';
+            mobileFabSignIn.style.display = 'flex';
+            mobileFabStories.style.display = 'flex';
         }
     }
 
@@ -617,8 +642,14 @@ class GeoStoriesApp {
             const authUrl = this.authFlow.authorizationUrl;
             this.log(`Authorization URL: ${authUrl}`);
 
-            // Show QR code and deeplink
-            this.showAuthUI(authUrl);
+            // Check if we're on mobile and show mobile modal if so
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                this.showMobileAuthModal(authUrl);
+            } else {
+                // Show QR code and deeplink in sidebar
+                this.showAuthUI(authUrl);
+            }
 
             this.updateStatus('Waiting for approval...', 'testnet');
 
@@ -1022,9 +1053,58 @@ class GeoStoriesApp {
         }
     }
 
+    // Show mobile auth modal with QR code
+    showMobileAuthModal(authUrl) {
+        const modal = document.getElementById('mobileAuthModal');
+        const qrCodeDiv = document.getElementById('mobileQrCode');
+
+        // Clear any existing QR code
+        qrCodeDiv.innerHTML = '';
+
+        // Generate QR code using QRCode.js
+        try {
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrCodeDiv, {
+                    text: authUrl,
+                    width: 250,
+                    height: 250,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                this.log('Mobile QR code displayed - scan with authenticator app');
+
+                // Make QR code clickable to open deeplink
+                qrCodeDiv.style.cursor = 'pointer';
+                qrCodeDiv.onclick = () => {
+                    // Convert pubky:// URL to pubkyring:// deeplink
+                    const deeplinkUrl = 'pubkyring://' + authUrl;
+                    window.location.href = deeplinkUrl;
+                    this.log(`Opening Pubky Ring with deeplink: ${deeplinkUrl}`);
+                };
+            } else {
+                console.error('QRCode library not loaded');
+            }
+        } catch (err) {
+            console.error('QR code generation error:', err);
+        }
+
+        // Show modal
+        modal.classList.add('active');
+    }
+
+    // Close mobile auth modal
+    closeMobileAuthModal() {
+        const modal = document.getElementById('mobileAuthModal');
+        modal.classList.remove('active');
+    }
+
     // Hide QR code UI
     hideAuthUI() {
         document.getElementById('qrContainer').style.display = 'none';
+
+        // Also close mobile modal if it's open
+        this.closeMobileAuthModal();
     }
 
     // Add a new marker/story

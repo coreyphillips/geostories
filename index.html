@@ -1502,8 +1502,9 @@
 
         <!-- Mobile FAB Buttons -->
         <div class="mobile-fab-container">
-            <button class="mobile-fab secondary" onclick="app.showMobileStories()" title="View Stories">📍</button>
+            <button class="mobile-fab secondary" id="mobileFabStories" onclick="app.showMobileStories()" title="View Stories">📍</button>
             <button class="mobile-fab" id="mobileFabAdd" onclick="app.showMobileAddStory()" title="Add Story">+</button>
+            <button class="mobile-fab" id="mobileFabSignIn" onclick="app.startAuthFlow()" title="Sign In" style="display: none;">🔐</button>
         </div>
 
         <!-- Mobile Modal Backdrop -->
@@ -1516,6 +1517,21 @@
             <h2>Friends with GeoStories</h2>
             <div id="friendsListContainer">
                 <div class="loading-friends">Loading friends...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Auth Modal -->
+    <div id="mobileAuthModal" class="modal-overlay" onclick="if(event.target === this) app.closeMobileAuthModal()">
+        <div class="modal" style="position: relative;">
+            <button class="modal-close" onclick="app.closeMobileAuthModal()">×</button>
+            <h2>Sign In to GeoStories</h2>
+            <div id="mobileQrContainer" style="text-align: center; padding: 1rem;">
+                <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">Scan or tap the QR code to authorize with Pubky Ring</p>
+                <div id="mobileQrCode" style="display: flex; justify-content: center; margin-bottom: 1rem;"></div>
+                <p class="auth-instructions">
+                    Scan this QR code or click it to open Pubky Ring and grant GeoStories permission to write markers.
+                </p>
             </div>
         </div>
     </div>
