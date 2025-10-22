@@ -398,11 +398,18 @@ class GeoStoriesApp {
     initResizableSidebar() {
         const sidebar = document.getElementById('sidebar');
         const resizeHandle = document.getElementById('resizeHandle');
+
+        if (!resizeHandle) {
+            console.error('Resize handle not found!');
+            return;
+        }
+
         let isResizing = false;
         let startX = 0;
         let startWidth = 0;
 
         resizeHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             isResizing = true;
             startX = e.clientX;
             startWidth = sidebar.offsetWidth;
@@ -414,6 +421,7 @@ class GeoStoriesApp {
         document.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
 
+            e.preventDefault();
             const width = startWidth + (e.clientX - startX);
             const minWidth = parseInt(getComputedStyle(sidebar).minWidth);
             const maxWidth = parseInt(getComputedStyle(sidebar).maxWidth);
@@ -1378,8 +1386,7 @@ class GeoStoriesApp {
                             <div class="marker-title">${m.title}</div>
                             <div class="marker-desc">${m.description}</div>
                             <div class="marker-meta">
-                                ${new Date(m.timestamp).toLocaleDateString()} •
-                                ${m.latitude.toFixed(4)}, ${m.longitude.toFixed(4)}
+                                ${new Date(m.timestamp).toLocaleDateString()}
                             </div>
                             ${actionsHtml}
                         </li>
