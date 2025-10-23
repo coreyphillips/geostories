@@ -89,17 +89,17 @@
     </style>
     <script>
         // GitHub Pages SPA redirect trick
-        // When a user navigates to /some-pubky-key, GitHub serves this 404.html
-        // We capture the path and redirect to index.html with the path intact
+        // Save the path to sessionStorage and redirect to index.html
         const path = window.location.pathname;
 
-        // Only redirect if there's actually a path (not just the root 404)
         if (path && path !== '/' && path !== '/404.html') {
-            // Redirect to root, preserving the path for the app to read
-            window.location.replace(window.location.origin + path);
+            // Store the path we're trying to access
+            sessionStorage.setItem('redirect', path);
+            // Redirect to the root (index.html)
+            window.location.replace('/');
         } else {
-            // If it's actually a 404, redirect to home
-            window.location.replace(window.location.origin);
+            // If it's actually a 404 at root, just go home
+            window.location.replace('/');
         }
     </script>
 </head>

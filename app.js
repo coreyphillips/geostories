@@ -225,6 +225,14 @@ class GeoStoriesApp {
 
     // Check URL for pubky parameter and auto-load markers
     checkUrlForPubky() {
+        // First check if we were redirected from 404.html
+        const redirectPath = sessionStorage.getItem('redirect');
+        if (redirectPath) {
+            sessionStorage.removeItem('redirect');
+            // Use the redirect path and update the URL
+            window.history.replaceState({ pubky: redirectPath.replace(/^\//, '').replace(/^pk:/, '') }, '', redirectPath);
+        }
+
         // Get the path from the URL (everything after the domain)
         const path = window.location.pathname;
 
