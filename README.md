@@ -12,13 +12,13 @@
 
 [🌐 **Visit geostories.app**](https://geostories.app)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#-architecture) • [Contributing](#-future-enhancements)
+[Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Technical Details](#-technical-details) • [Deployment](#-deployment)
 
 </div>
 
 ---
 
-A fully decentralized geo-mapping application where users can place markers on a map and write stories with photos. Built with **Pubky SDK** for decentralized storage and **Leaflet/OpenStreetMap** for beautiful map visualization.
+A fully decentralized geo-mapping application where users can place markers on a map and write stories with photos. Built with **Pubky SDK** for decentralized identity and storage, **Leaflet/OpenStreetMap** for map visualization, and designed to work on desktop and mobile devices.
 
 ## ✨ Features
 
@@ -29,21 +29,30 @@ A fully decentralized geo-mapping application where users can place markers on a
 ### 🎯 Core Features
 - 📍 **Interactive Map** - Click anywhere to place story markers
 - 📸 **Photo Support** - Upload photos with your stories
-- 🔓 **Public Sharing** - View stories from any Pubky user
-- 🚫 **No Backend** - Fully client-side decentralized app
+- ✏️ **Edit & Delete** - Manage your own markers
+- 🔍 **Location Search** - Geocoder to find places quickly
+- 📱 **Mobile Responsive** - Works beautifully on all devices
 
 </td>
 <td width="50%">
 
-### 🔐 Powered by Pubky
-- 🆔 **Decentralized Identity** - Own your data
-- 🔒 **Secure Auth** - QR code authentication
-- 🌐 **Peer-to-Peer** - No central server needed
-- ♾️ **Censorship Resistant** - Your stories, forever
+### 🤝 Social Features
+- 👥 **Friends Integration** - See your friends' markers on map
+- 🎨 **Color-Coded Markers** - Each friend has a unique color
+- 🔗 **URL Sharing** - Share direct links to your markers
+- 🔓 **Public Discovery** - Explore any Pubky user's stories
+- 💾 **Session Persistence** - Stay logged in
 
 </td>
 </tr>
 </table>
+
+### 🔐 Powered by Pubky
+- 🆔 **Decentralized Identity** - Own your data
+- 🔒 **QR Code Auth** - Secure authentication with Pubky Ring
+- 🌐 **Mainnet Ready** - Production Pubky network
+- ♾️ **Censorship Resistant** - Your stories, forever
+- 🚫 **No Backend** - Fully client-side decentralized app
 
 ## 🏗️ Architecture
 
@@ -71,76 +80,70 @@ A fully decentralized geo-mapping application where users can place markers on a
 
 ### Prerequisites
 
-| Requirement | Version | Purpose |
-|------------|---------|---------|
-| Node.js | v20+ | Package management |
-| Rust/Cargo | Latest | Local testnet (optional) |
+- **Node.js** v20+ (for package management)
+- **Modern browser** (Chrome, Firefox, Safari, Edge with ES6+ support)
 
 ### Installation
 
 ```bash
-# 1️⃣ Install dependencies
-cd geostories-app
+# 1️⃣ Clone the repository
+git clone <repo-url>
+cd geostories
+
+# 2️⃣ Install dependencies
 npm install
 
-# 2️⃣ Start local testnet (optional, for development)
-# In a separate terminal:
-cd ../pubky-core
-cargo run -p pubky-testnet
-
-# 3️⃣ Start the app
+# 3️⃣ Start the development server
 npm run dev
 ```
 
 🎉 Open your browser to `http://localhost:3000` and start exploring!
 
+### Production Build
+
+```bash
+npm run build
+npm run preview
+```
+
 ## 📖 Usage
 
 ### 🔐 Getting Started
 
-<table>
-<tr>
-<td width="60">1️⃣</td>
-<td><b>Connect</b><br/>Click "Connect to Pubky" to initialize the SDK</td>
-</tr>
-<tr>
-<td>2️⃣</td>
-<td><b>Authorize</b><br/>Click "Authorize (QR)" button and scan with Pubky Ring app</td>
-</tr>
-<tr>
-<td>3️⃣</td>
-<td><b>Start Creating</b><br/>Click on the map to place markers and share your stories!</td>
-</tr>
-</table>
+1. **Connect to Pubky** - Click "Connect to Pubky" to initialize the SDK
+2. **Authorize with QR Code** - Scan the QR code with the Pubky Ring mobile app (or click the link on mobile)
+3. **Start Creating** - Click on the map to place markers and share your stories!
 
-> **Why Pubky Auth?**
-> - ✅ No need to run your own homeserver
-> - ✅ Uses your existing Pubky identity
-> - ✅ Secure, keyless authentication
-> - ✅ Works with any Pubky-compatible authenticator
+> **Session Persistence:** Your session is saved for 30 days - no need to re-authenticate every time!
 
 ---
 
-### 📝 Adding Stories
+### 📝 Creating & Managing Stories
 
-1. **📍 Select Location** - Click anywhere on the map to set marker location
-2. **✍️ Fill Form** - Enter title, description, and optionally upload a photo
-3. **🚀 Submit** - Click "Add Story to Map"
+**Add a Story:**
+1. Click anywhere on the map (or use the search bar to find a location)
+2. Fill in the title, description, and optionally upload a photo
+3. Click "Add Story to Map"
 
-### 👥 Viewing Others' Stories
+**Edit/Delete:**
+- Click on your own markers to see Edit and Delete buttons
+- Make changes and save, or remove stories you no longer want
 
-1. Copy another user's pubky (public key)
-2. Paste it in the "View Another User's Markers" field
-3. Click "Load Markers"
-4. Explore their stories on the map!
+### 👥 Social Features
 
-### 🗺️ Map Interaction
+**View Friends' Markers:**
+- Your Pubky friends automatically appear in the sidebar
+- Each friend gets a unique color on the map
+- Click a friend's name to highlight their markers
 
-| Action | Result |
-|--------|--------|
-| Click marker | Opens popup with story details |
-| Click sidebar item | Centers map on that marker |
-| Pan/Zoom | Navigate the map freely |
+**Explore Other Users:**
+- Paste any Pubky user's public key to load their markers
+- Share your markers by sharing: `geostories.app/your-pubky-here`
+
+**Map Interaction:**
+- Click markers to see story details
+- Click sidebar items to center the map on that marker
+- Hover over markers for animations and highlights
 
 ## 🔧 Technical Details
 
@@ -210,159 +213,111 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 ## 📁 File Structure
 
 ```
-geostories-app/
-├── 📄 index.html          # UI layout with Leaflet map
-├── 📜 app.js              # Main application logic with Pubky integration
+geostories/
+├── 📄 index.html          # Main UI with embedded CSS (1785 lines)
+├── 📜 app.js              # Application logic with Pubky integration (1905 lines)
+├── ⚙️ vite.config.js      # Vite build configuration
 ├── 📦 package.json        # Dependencies and scripts
 └── 📖 README.md           # This file
 ```
 
+**Tech Stack:**
+- **Frontend:** Vanilla JavaScript (ES6 modules), HTML5, CSS3
+- **Maps:** Leaflet.js v1.9.4 + OpenStreetMap tiles
+- **Identity:** @synonymdev/pubky v0.6.0-rc.6
+- **Build:** Vite v7.1.11
+- **Utils:** jdenticon (avatars), qrcodejs (QR codes), leaflet-control-geocoder (search)
+
 ## 🚢 Deployment
 
-### Production Considerations
+The app is **fully static** and can be hosted anywhere:
 
-| Aspect | Recommendation |
-|--------|---------------|
-| 🔐 **Authentication** | Use Pubky Auth flow (QR code) - users authenticate with their existing accounts |
-| 🏠 **Homeserver** | Users authenticate with their own homeserver - no need to run one yourself |
-| 🔄 **Relay** | Consider running your own HTTP relay for the auth flow |
-| 📸 **Photo Limits** | Implement file size limits and image compression |
-| 💾 **Session Persistence** | Optionally save session tokens to avoid re-auth on each visit |
+- **GitHub Pages** (current deployment)
+- **Netlify** / **Vercel** / **Cloudflare Pages**
+- Any static file hosting service
 
-### Hosting Options
+**Build for production:**
+```bash
+npm run build
+```
 
-The app is **fully static** and can be hosted on:
+The `dist/` folder contains the production-ready build.
 
-<table>
-<tr>
-<td align="center">🐙<br/><b>GitHub Pages</b></td>
-<td align="center">⚡<br/><b>Netlify</b></td>
-<td align="center">▲<br/><b>Vercel</b></td>
-<td align="center">🌐<br/><b>Any static host</b></td>
-</tr>
-</table>
-
-> Just ensure users have access to a Pubky homeserver (testnet for dev, mainnet for prod)
+**Production Features:**
+- ✅ Runs on **Pubky mainnet** (production network)
+- ✅ **30-day session persistence** via secure cookies
+- ✅ **No backend required** - fully client-side
+- ✅ **Mobile responsive** with touch-optimized controls
+- ✅ Users authenticate with their own Pubky homeserver
 
 ## 🔍 Troubleshooting
 
-<details>
-<summary><b>"Failed to connect"</b></summary>
+**Authentication Issues:**
+- Make sure you have the Pubky Ring app installed on your mobile device
+- Try refreshing the page and reconnecting
+- Check browser console for detailed error messages
 
-- ✅ Make sure the testnet is running: `cargo run -p pubky-testnet`
-- ✅ Check that port 15411 (DHT) and 15412 (homeserver) are available
-- ✅ Try restarting the development server
+**Marker Loading Issues:**
+- Verify the pubky (public key) is in correct z32 format
+- Ensure the user has created markers on GeoStories
+- Try refreshing the page
 
-</details>
+**Photo Upload Issues:**
+- Keep images under 10MB for best performance
+- Supported formats: JPEG, PNG, GIF
+- Ensure your browser supports FileReader API (all modern browsers do)
 
-<details>
-<summary><b>"Failed to load markers"</b></summary>
-
-- ✅ Verify the pubky (public key) is correct and in z32 format
-- ✅ Ensure the user has actually created markers
-- ✅ Check browser console for detailed errors
-- ✅ Try refreshing the page
-
-</details>
-
-<details>
-<summary><b>Photo upload fails</b></summary>
-
-- ✅ Check file size (keep under 10MB for best performance)
-- ✅ Verify browser supports FileReader API
-- ✅ Check browser console for errors
-- ✅ Try a different image format (JPEG, PNG)
-
-</details>
+**Browser Compatibility:**
+- Requires a modern browser with ES6+ support
+- Best experience on Chrome, Firefox, Safari, or Edge
+- Mobile browsers fully supported
 
 ## 🛠️ Development
 
-<details>
-<summary><b>Running Tests</b></summary>
-
+**Local Development:**
 ```bash
-# Start testnet first
-cargo run -p pubky-testnet
-
-# In browser console, test operations
-await app.connect()
-await app.signup()
+npm run dev  # Start Vite dev server on localhost:3000
 ```
 
-</details>
+**Debugging:**
+- Open browser DevTools console to see detailed logs
+- All Pubky operations are logged with `[GeoStories]` prefix
+- Check Network tab for storage API calls
 
-<details>
-<summary><b>Debugging</b></summary>
-
-Open browser DevTools console to see logs:
-
-```
-[GeoStories] Map initialized with OpenStreetMap
-[GeoStories] Connected to Pubky testnet
-[GeoStories] Signed up successfully! Your pubky: 8pinxxgqs...
-```
-
-</details>
+**Code Structure:**
+- `index.html` - UI layout and embedded CSS
+- `app.js` - Main application logic, Pubky integration, map controls
+- Pure vanilla JavaScript - no framework dependencies
+- Modular design with clear separation of concerns
 
 ## 🚀 Future Enhancements
 
-<table>
-<tr>
-<td width="50%">
-
-### 🎨 Features
-- [ ] 🖼️ Photo galleries (multiple photos per marker)
-- [ ] 🏷️ Marker categories/tags
-- [ ] 🔍 Search and filter functionality
-- [ ] 💬 Comments/replies on markers
-
-</td>
-<td width="50%">
-
-### ⚡ Performance
-- [ ] 📦 Photo compression before upload
-- [ ] 🗂️ Marker clustering for dense areas
-- [ ] 👥 Follow specific users
-- [ ] 📥 Export markers as GeoJSON
-
-</td>
-</tr>
-</table>
+**Potential Features:**
+- 🖼️ Photo galleries (multiple photos per marker)
+- 🏷️ Marker categories and tags
+- 🔍 Advanced search and filter
+- 💬 Comments/replies on markers
+- 📦 Automatic photo compression
+- 🗂️ Marker clustering for dense areas
+- 📥 Export markers as GeoJSON
+- 🌙 Dark mode theme
+- 📊 Analytics dashboard
 
 ---
 
 ## 📚 Resources
 
-<table>
-<tr>
-<td align="center">
-<b>🔗 Pubky Core</b><br/>
-<a href="https://github.com/pubky/pubky-core">GitHub Repository</a>
-</td>
-<td align="center">
-<b>📖 Pubky SDK Docs</b><br/>
-<a href="https://docs.rs/pubky">Documentation</a>
-</td>
-<td align="center">
-<b>🗺️ Leaflet</b><br/>
-<a href="https://leafletjs.com/">Documentation</a>
-</td>
-<td align="center">
-<b>🌍 OpenStreetMap</b><br/>
-<a href="https://www.openstreetmap.org/">Website</a>
-</td>
-</tr>
-</table>
+- **Pubky Core:** [github.com/pubky/pubky-core](https://github.com/pubky/pubky-core)
+- **Pubky SDK Docs:** [docs.rs/pubky](https://docs.rs/pubky)
+- **Leaflet Docs:** [leafletjs.com](https://leafletjs.com/)
+- **OpenStreetMap:** [openstreetmap.org](https://www.openstreetmap.org/)
 
-## 🙏 Credits
+## 🙏 Built With
 
-Built with love using:
-
-| Technology | Purpose |
-|-----------|---------|
-| **Pubky SDK** | Decentralized identity and storage |
-| **Leaflet** | Interactive map library |
-| **OpenStreetMap** | Map tiles and data |
+- **@synonymdev/pubky** - Decentralized identity and storage
+- **Leaflet.js** - Interactive map library
+- **OpenStreetMap** - Map tiles and geodata
+- **Vite** - Lightning-fast build tool
 
 ---
 
@@ -370,9 +325,9 @@ Built with love using:
 
 ## 📜 License
 
-**MIT License**
+MIT License - See LICENSE file for details
 
-Made with ❤️ by the GeoStories team
+**Made for the Pubky Hackathon**
 
 [⬆ Back to Top](#-geostories)
 

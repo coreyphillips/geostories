@@ -1024,7 +1024,7 @@ class GeoStoriesApp {
         const container = document.getElementById('friendsListContainer');
 
         if (this.friendsWithMarkers.length === 0) {
-            container.innerHTML = '<div class="no-friends">No friends with GeoStories found. Follow users on Pubky to see their stories here!</div>';
+            container.innerHTML = '<div class="no-friends">No friends with GeoStories found. Follow users on <a href="https://pubky.app" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">pubky.app</a> to see their stories here!</div>';
         } else {
             // Assign colors to friends
             this.friendsWithMarkers.forEach(friend => {
