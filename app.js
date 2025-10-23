@@ -510,6 +510,31 @@ class GeoStoriesApp {
         return this.friendColorMap.get(pubkey);
     }
 
+    // Convert pubky:// URL to HTTPS URL for browser compatibility
+    convertPubkyUrlToHttps(pubkyUrl) {
+        if (!pubkyUrl) return null;
+
+        // If it's already an HTTP(S) URL, return as-is
+        if (pubkyUrl.startsWith('http://') || pubkyUrl.startsWith('https://')) {
+            return pubkyUrl;
+        }
+
+        // If it's a pubky:// URL, convert to HTTPS
+        if (pubkyUrl.startsWith('pubky://')) {
+            // pubky://USER_PUBKY/pub/path/to/file.ext
+            // becomes https://USER_PUBKY.httprelay.io/pub/path/to/file.ext
+            const withoutProtocol = pubkyUrl.replace('pubky://', '');
+            const parts = withoutProtocol.split('/');
+            if (parts.length > 0) {
+                const userPubky = parts[0];
+                const path = parts.slice(1).join('/');
+                return `https://${userPubky}.httprelay.io/${path}`;
+            }
+        }
+
+        return null;
+    }
+
     // Initialize resizable sidebar
     initResizableSidebar() {
         const sidebar = document.getElementById('sidebar');
@@ -852,7 +877,7 @@ class GeoStoriesApp {
         this.loadUserMarkers(this.currentPubky);
     }
 
-    // Fetch followed users from Pubky
+    // Fetch followed users from Pubky with full pagination support
     async getFollowedUsers() {
         if (!this.currentPubky) {
             return [];
@@ -862,27 +887,71 @@ class GeoStoriesApp {
             const followsPath = `pubky://${this.currentPubky}/pub/pubky.app/follows/`;
             this.log(`Fetching follows from: ${followsPath}`);
 
-            // List all follow files
-            const followFiles = await this.pubky.publicStorage.list(followsPath);
-            this.log(`Found ${followFiles.length} follow files`);
-
             const followedUsers = [];
+            let cursor = null;
+            let batchNumber = 1;
+            let totalFetched = 0;
 
-            for (const followFile of followFiles) {
-                try {
-                    // Extract pubky from follow file URL
-                    // Follow files are typically at: pubky://{user}/pub/pubky.app/follows/{followed_pubky}
-                    const parts = followFile.split('/');
-                    const followedPubky = parts[parts.length - 1];
+            // Pagination loop: keep fetching until we get fewer results than expected
+            // or until we receive an empty batch
+            while (true) {
+                this.log(`Fetching batch ${batchNumber}${cursor ? ` (cursor: ${cursor.substring(0, 40)}...)` : ''}`);
 
-                    if (followedPubky && followedPubky.length > 0) {
-                        followedUsers.push(followedPubky);
-                        this.log(`Found followed user: ${followedPubky}`);
+                // Fetch a batch of follow files, using cursor for pagination
+                const followFiles = await this.pubky.publicStorage.list(followsPath, cursor);
+
+                if (!followFiles || followFiles.length === 0) {
+                    this.log(`No more follows to fetch (batch ${batchNumber} was empty)`);
+                    break;
+                }
+
+                this.log(`Batch ${batchNumber}: Retrieved ${followFiles.length} follow files`);
+                totalFetched += followFiles.length;
+
+                // Process each follow file in this batch
+                for (const followFile of followFiles) {
+                    try {
+                        // Extract pubky from follow file URL
+                        // Follow files are typically at: pubky://{user}/pub/pubky.app/follows/{followed_pubky}
+                        // Remove trailing slash if present and split
+                        const cleanUrl = followFile.replace(/\/$/, '');
+                        const parts = cleanUrl.split('/');
+                        const followedPubky = parts[parts.length - 1];
+
+                        // Validate that this looks like a pubky (alphanumeric string of reasonable length)
+                        if (followedPubky && followedPubky.length >= 40 && /^[a-z0-9]+$/.test(followedPubky)) {
+                            followedUsers.push(followedPubky);
+                            this.log(`Found followed user: ${followedPubky}`);
+                        } else {
+                            this.log(`Skipping invalid pubky: "${followedPubky}" from ${followFile}`);
+                        }
+                    } catch (err) {
+                        this.log(`Failed to parse follow file: ${followFile}`);
                     }
-                } catch (err) {
-                    this.log(`Failed to parse follow file: ${followFile}`);
+                }
+
+                // Check if we need to continue paginating
+                // If we got fewer than 100 results, we've reached the end
+                // The SDK may return fewer items if there are no more results
+                if (followFiles.length < 100) {
+                    this.log(`Reached end of follows (batch ${batchNumber} had ${followFiles.length} items)`);
+                    break;
+                }
+
+                // Set cursor to the last URL in this batch for next iteration
+                cursor = followFiles[followFiles.length - 1];
+                batchNumber++;
+
+                // Safety check: prevent infinite loops (max 1000 batches = 100,000 follows)
+                if (batchNumber > 1000) {
+                    this.log(`⚠️ WARNING: Reached maximum batch limit (1000). Stopping pagination.`);
+                    console.warn(`⚠️ Pagination stopped at 1000 batches. Total follows retrieved: ${totalFetched}`);
+                    break;
                 }
             }
+
+            this.log(`✅ Pagination complete: ${totalFetched} total follow files retrieved across ${batchNumber} batch(es)`);
+            this.log(`✅ Found ${followedUsers.length} valid followed users`);
 
             return followedUsers;
         } catch (error) {
@@ -1046,8 +1115,10 @@ class GeoStoriesApp {
                 <ul class="friends-list">
                     ${this.friendsWithMarkers.map(friend => {
                         const color = this.getFriendColor(friend.pubky);
-                        const avatarHtml = friend.image
-                            ? `<img src="${friend.image}" alt="${friend.name}" class="friend-avatar" onerror="this.style.display='none'">`
+                        // Convert pubky:// image URL to HTTPS
+                        const imageUrl = this.convertPubkyUrlToHttps(friend.image);
+                        const avatarHtml = imageUrl
+                            ? `<img src="${imageUrl}" alt="${friend.name}" class="friend-avatar" onerror="this.style.display='none'">`
                             : '';
                         const bioHtml = friend.bio
                             ? `<div class="friend-bio">${friend.bio}</div>`
