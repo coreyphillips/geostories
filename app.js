@@ -923,13 +923,25 @@ class GeoStoriesApp {
         try {
             this.log('Loading friends with GeoStory markers...');
 
+            const progressBar = document.getElementById('friendsBtnProgress');
+            const btnText = document.getElementById('friendsBtnText');
+
             const followedUsers = await this.getFollowedUsers();
             this.log(`Checking ${followedUsers.length} followed users for markers...`);
 
             const friendsWithMarkers = [];
+            const totalUsers = followedUsers.length;
 
             // Check each followed user for markers and fetch their profile
-            for (const pubky of followedUsers) {
+            for (let i = 0; i < followedUsers.length; i++) {
+                const pubky = followedUsers[i];
+
+                // Update progress bar
+                const progress = ((i + 1) / totalUsers) * 100;
+                if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                }
+
                 const markerCount = await this.checkUserHasMarkers(pubky);
                 if (markerCount > 0) {
                     // Fetch profile information
@@ -948,13 +960,61 @@ class GeoStoriesApp {
 
             this.friendsWithMarkers = friendsWithMarkers;
 
+            // Fade out progress bar after completion
+            if (progressBar) {
+                // Ensure we're at 100% first
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    // Only animate opacity, not width
+                    progressBar.style.transition = 'opacity 0.5s ease';
+                    progressBar.style.opacity = '0';
+
+                    // Wait for fade to complete (500ms), then reset with no transition
+                    setTimeout(() => {
+                        // Turn off all transitions before resetting
+                        progressBar.style.transition = 'none';
+                        // Reset width while opacity is 0 (invisible)
+                        progressBar.style.width = '0%';
+
+                        // Wait a frame, then restore opacity and transitions
+                        requestAnimationFrame(() => {
+                            progressBar.style.opacity = '1';
+                            requestAnimationFrame(() => {
+                                progressBar.style.transition = 'width 0.3s ease, opacity 0.5s ease';
+                            });
+                        });
+                    }, 550); // Wait slightly longer than the fade duration
+                }, 300);
+            }
+
             // Update button text
-            document.getElementById('friendsBtn').textContent = `View Friends (${friendsWithMarkers.length})`;
+            if (btnText) {
+                btnText.textContent = `View Friends (${friendsWithMarkers.length})`;
+            }
 
             this.log(`Found ${friendsWithMarkers.length} friends with GeoStory markers`);
         } catch (error) {
             this.log(`Error loading friends: ${error.message}`);
             console.error(error);
+
+            // Reset progress bar on error
+            const progressBar = document.getElementById('friendsBtnProgress');
+            if (progressBar) {
+                progressBar.style.transition = 'opacity 0.5s ease';
+                progressBar.style.opacity = '0';
+                setTimeout(() => {
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = '0%';
+
+                    requestAnimationFrame(() => {
+                        progressBar.style.opacity = '1';
+                        requestAnimationFrame(() => {
+                            progressBar.style.transition = 'width 0.3s ease, opacity 0.5s ease';
+                        });
+                    });
+                }, 550);
+            }
         }
     }
 

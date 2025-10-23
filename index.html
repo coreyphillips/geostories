@@ -274,6 +274,8 @@
             backdrop-filter: blur(10px);
             flex-shrink: 0;
             width: auto;
+            position: relative;
+            overflow: hidden;
         }
 
         .friends-btn:hover {
@@ -285,6 +287,23 @@
 
         .friends-btn.hidden {
             display: none;
+        }
+
+        .friends-btn-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: width 0.3s ease, opacity 0.5s ease;
+            width: 0%;
+            opacity: 1;
+            z-index: 0;
+        }
+
+        .friends-btn-text {
+            position: relative;
+            z-index: 1;
         }
 
         /* User Menu Dropdown */
@@ -1610,7 +1629,10 @@
             <div class="subtitle">Decentralized story mapping powered by Pubky</div>
         </div>
         <div class="header-right">
-            <button id="friendsBtn" class="friends-btn hidden" onclick="app.showFriendsModal()">View Friends (0)</button>
+            <button id="friendsBtn" class="friends-btn hidden" onclick="app.showFriendsModal()">
+                <div class="friends-btn-progress" id="friendsBtnProgress"></div>
+                <span class="friends-btn-text" id="friendsBtnText">View Friends (0)</span>
+            </button>
             <div class="header-search">
                 <input type="text" id="pubkyInputHeader" placeholder="Enter pubky to view markers..." onkeypress="if(event.key === 'Enter') app.loadUserMarkersFromHeader()">
                 <button onclick="app.loadUserMarkersFromHeader()">Load</button>
