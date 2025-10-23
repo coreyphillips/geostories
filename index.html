@@ -918,9 +918,21 @@
 
         .button-group {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 0.5rem;
-            margin-top: 1rem;
+            margin-top: 0;
+        }
+
+        .button-group.two-buttons {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .cancel-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+        }
+
+        .cancel-btn:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #545b62 100%) !important;
         }
 
         .small-text {
@@ -1741,7 +1753,9 @@
                             <img id="photoPreview" class="photo-preview" style="display: none;">
                         </div>
 
-                        <button type="submit" id="submitBtn" disabled>Add Story to Map</button>
+                        <div class="button-group" id="formButtons">
+                            <button type="submit" id="submitBtn" disabled>Add Story to Map</button>
+                        </div>
                     </form>
                 </div>
 

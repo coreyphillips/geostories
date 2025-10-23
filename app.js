@@ -1646,6 +1646,38 @@ class GeoStoriesApp {
         this.markers.clear();
     }
 
+    // Cancel editing a marker
+    cancelEdit() {
+        // Reset form
+        document.getElementById('markerForm').reset();
+        document.getElementById('photoPreview').style.display = 'none';
+
+        // Remove temp marker
+        if (this.tempMarker) {
+            this.map.removeLayer(this.tempMarker);
+        }
+        this.currentMarkerLocation = null;
+
+        // Reset button text and remove cancel button
+        const submitBtn = document.getElementById('submitBtn');
+        const formButtons = document.getElementById('formButtons');
+        submitBtn.textContent = 'Add Story to Map';
+
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+            formButtons.classList.remove('two-buttons');
+        }
+
+        // Clear editing state
+        this.editingMarkerId = null;
+
+        // Switch to view tab
+        this.switchTab('view');
+
+        this.log('Editing cancelled');
+    }
+
     // Edit a marker
     editMarker(markerId) {
         const marker = this.markers.get(markerId);
@@ -1694,8 +1726,36 @@ class GeoStoriesApp {
         // Center map on marker
         this.map.setView([marker.latitude, marker.longitude], 15);
 
-        // Update submit button text
-        document.getElementById('submitBtn').textContent = 'Update Story';
+        // Update submit button text and show cancel button
+        const submitBtn = document.getElementById('submitBtn');
+        const formButtons = document.getElementById('formButtons');
+        submitBtn.textContent = 'Update Story';
+
+        // Show cancel button if not already shown
+        if (!document.getElementById('cancelBtn')) {
+            formButtons.classList.add('two-buttons');
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.id = 'cancelBtn';
+            cancelBtn.className = 'cancel-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => this.cancelEdit();
+            formButtons.appendChild(cancelBtn);
+        }
+
+        // On mobile, show the sidebar with the edit form
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobileBackdrop');
+            const header = document.querySelector('header');
+
+            // Hide header on mobile to maximize map view
+            header.classList.add('mobile-hidden');
+
+            // Show sidebar with backdrop
+            sidebar.classList.add('show');
+            backdrop.classList.add('active');
+        }
 
         this.log(`Editing marker: ${markerId}`);
     }
@@ -1773,7 +1833,17 @@ class GeoStoriesApp {
             // Reset form and editing state
             document.getElementById('markerForm').reset();
             document.getElementById('photoPreview').style.display = 'none';
-            document.getElementById('submitBtn').textContent = 'Add Story to Map';
+            const submitBtn = document.getElementById('submitBtn');
+            const formButtons = document.getElementById('formButtons');
+            submitBtn.textContent = 'Add Story to Map';
+
+            // Remove cancel button
+            const cancelBtn = document.getElementById('cancelBtn');
+            if (cancelBtn) {
+                cancelBtn.remove();
+                formButtons.classList.remove('two-buttons');
+            }
+
             if (this.tempMarker) {
                 this.map.removeLayer(this.tempMarker);
             }
