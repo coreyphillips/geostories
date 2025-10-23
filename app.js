@@ -511,7 +511,7 @@ class GeoStoriesApp {
     }
 
     // Convert pubky:// URL to HTTPS URL for browser compatibility
-    convertPubkyUrlToHttps(pubkyUrl) {
+    convertPubkyUrlToHttps(pubkyUrl, userPubky = null) {
         if (!pubkyUrl) return null;
 
         // If it's already an HTTP(S) URL, return as-is
@@ -522,14 +522,19 @@ class GeoStoriesApp {
         // If it's a pubky:// URL, convert to HTTPS
         if (pubkyUrl.startsWith('pubky://')) {
             // pubky://USER_PUBKY/pub/path/to/file.ext
-            // becomes https://USER_PUBKY.httprelay.io/pub/path/to/file.ext
+            // becomes https://_pubky.USER_PUBKY/pub/path/to/file.ext
             const withoutProtocol = pubkyUrl.replace('pubky://', '');
             const parts = withoutProtocol.split('/');
             if (parts.length > 0) {
-                const userPubky = parts[0];
+                const extractedPubky = parts[0];
                 const path = parts.slice(1).join('/');
-                return `https://${userPubky}.httprelay.io/${path}`;
+                return `https://_pubky.${extractedPubky}/${path}`;
             }
+        }
+
+        // If it's a relative path (starts with /pub/) and we have a userPubky, construct full URL
+        if (pubkyUrl.startsWith('/pub/') && userPubky) {
+            return `https://_pubky.${userPubky}${pubkyUrl}`;
         }
 
         return null;
@@ -963,22 +968,40 @@ class GeoStoriesApp {
     // Get user profile information
     async getProfileInfo(pubky) {
         try {
-            const profileUrl = `pubky://${pubky}/pub/pubky.app/profile.json`;
-            const profileData = await this.pubky.publicStorage.getJson(profileUrl);
+            // Use the Pubky client's fetch directly with cache-busting to prevent SDK caching
+            const cacheBuster = Date.now() + Math.random();
+            const profileUrl = `https://_pubky.${pubky}/pub/pubky.app/profile.json?_=${cacheBuster}`;
+
+            const response = await this.pubky.client.fetch(profileUrl, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const profileData = await response.json();
 
             return {
-                name: profileData.name || null,
-                bio: profileData.bio || null,
-                image: profileData.image || null,
-                links: profileData.links || []
+                name: profileData?.name || null,
+                bio: profileData?.bio || null,
+                image: profileData?.image || null,
+                links: profileData?.links || [],
+                pubky: pubky
             };
         } catch (error) {
-            this.log(`Could not fetch profile for ${pubky}: ${error.message}`);
             return {
                 name: null,
                 bio: null,
                 image: null,
-                links: []
+                links: [],
+                pubky: pubky
             };
         }
     }
@@ -1021,17 +1044,19 @@ class GeoStoriesApp {
 
                 const markerCount = await this.checkUserHasMarkers(pubky);
                 if (markerCount > 0) {
+                    // Add delay to prevent request collisions
+                    //await new Promise(resolve => setTimeout(resolve, 200));
+
                     // Fetch profile information
                     const profile = await this.getProfileInfo(pubky);
 
                     friendsWithMarkers.push({
                         pubky: pubky,
                         markerCount: markerCount,
-                        name: profile.name || pubky.substring(0, 16) + '...', // Use profile name or shortened pubky
+                        name: profile.name || pubky.substring(0, 16) + '...',
                         bio: profile.bio,
                         image: profile.image
                     });
-                    this.log(`Friend ${profile.name || pubky} has ${markerCount} markers`);
                 }
             }
 
@@ -1115,8 +1140,8 @@ class GeoStoriesApp {
                 <ul class="friends-list">
                     ${this.friendsWithMarkers.map(friend => {
                         const color = this.getFriendColor(friend.pubky);
-                        // Convert pubky:// image URL to HTTPS
-                        const imageUrl = this.convertPubkyUrlToHttps(friend.image);
+                        // Convert pubky:// or relative image URL to HTTPS, passing friend's pubky
+                        const imageUrl = this.convertPubkyUrlToHttps(friend.image, friend.pubky);
                         const avatarHtml = imageUrl
                             ? `<img src="${imageUrl}" alt="${friend.name}" class="friend-avatar" onerror="this.style.display='none'">`
                             : '';
