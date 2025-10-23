@@ -1,5 +1,6 @@
 import { Pubky, Keypair, PublicKey, setLogLevel } from '@synonymdev/pubky';
 import * as jdenticon from 'jdenticon';
+import { CacheManager } from './cache.js';
 
 class GeoStoriesApp {
     constructor() {
