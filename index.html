@@ -417,32 +417,81 @@
             font-size: 0.9rem;
             color: #333;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             gap: 0.75rem;
             font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-dropdown-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scaleY(0);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .user-dropdown-item:hover {
-            background: #f8f9ff;
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f0ff 100%);
             padding-left: 1.25rem;
+        }
+
+        .user-dropdown-item:hover::before {
+            transform: scaleY(1);
+        }
+
+        .user-dropdown-item:active {
+            background: linear-gradient(135deg, #f0f0ff 0%, #e8e8ff 100%);
+            transform: scale(0.98);
         }
 
         .logout-item {
             color: #dc3545;
         }
 
+        .logout-item::before {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
         .logout-item:hover {
-            background: #fff5f5;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
             color: #c82333;
         }
 
-        .logout-icon {
+        .logout-item:active {
+            background: linear-gradient(135deg, #ffe5e5 0%, #ffd5d5 100%);
+        }
+
+        .dropdown-icon {
             font-size: 1.1rem;
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+            transition: all 0.2s;
+        }
+
+        .user-dropdown-item:hover .dropdown-icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scale(1.1);
+        }
+
+        .logout-item .dropdown-icon {
+            background: linear-gradient(135deg, #ffe5e5 0%, #ffd5d5 100%);
+        }
+
+        .logout-item:hover .dropdown-icon {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         }
 
         /* Friends Modal */
@@ -1681,8 +1730,17 @@
                         <div class="user-pubky-display" id="userPubkyDisplay">Not authenticated</div>
                     </div>
                     <div class="user-dropdown-divider"></div>
+                    <button class="user-dropdown-item" onclick="app.refreshAllData()">
+                        <span class="dropdown-icon">🔄</span>
+                        Refresh Data
+                    </button>
+                    <button class="user-dropdown-item" onclick="app.clearCacheAndReload()">
+                        <span class="dropdown-icon">🗑️</span>
+                        Clear Cache
+                    </button>
+                    <div class="user-dropdown-divider"></div>
                     <button class="user-dropdown-item logout-item" onclick="app.logout()">
-                        <span class="logout-icon">🚪</span>
+                        <span class="dropdown-icon">🚪</span>
                         Logout
                     </button>
                 </div>
@@ -1814,6 +1872,9 @@
 
     <!-- QRCode.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Cache Manager -->
+    <script src="/cache.js"></script>
 
     <!-- App Script -->
     <script type="module" src="/app.js"></script>

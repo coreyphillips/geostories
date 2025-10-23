@@ -21,6 +21,12 @@ class GeoStoriesApp {
         this.SESSION_STORAGE_KEY = 'geostories_session';
         this.SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+        // Initialize cache manager
+        this.cache = new CacheManager();
+        this.cache.init().catch(err => {
+            console.error('[App] Failed to initialize cache:', err);
+        });
+
         // Color palette for friends (vibrant, distinguishable colors)
         this.friendColors = [
             '#A29BFE', // Lavender
@@ -474,8 +480,52 @@ class GeoStoriesApp {
         }
     }
 
+    // Refresh all data (force reload from network)
+    async refreshAllData() {
+        // Close dropdown
+        document.getElementById('userDropdown').classList.add('hidden');
+
+        if (!this.currentPubky) {
+            this.showError('Not authenticated');
+            return;
+        }
+
+        this.updateStatus('Refreshing all data...', 'testnet');
+
+        // Refresh friends with markers
+        await this.loadFriendsWithMarkers(true); // forceRefresh = true
+
+        // Refresh current user's markers if viewing their own
+        const currentViewingPubky = document.getElementById('pubkyInputHeader').value.trim() || this.currentPubky;
+        if (currentViewingPubky) {
+            await this.loadUserMarkers(currentViewingPubky, false, true); // forceRefresh = true
+        }
+
+        this.updateStatus('Data refreshed successfully!', 'connected');
+    }
+
+    // Clear all caches and reload current view
+    async clearCacheAndReload() {
+        // Close dropdown
+        document.getElementById('userDropdown').classList.add('hidden');
+
+        if (!confirm('This will clear all cached data. Continue?')) {
+            return;
+        }
+
+        this.updateStatus('Clearing cache...', 'testnet');
+        await this.cache.clearAllCaches();
+
+        // Reload data if authenticated
+        if (this.currentPubky) {
+            await this.refreshAllData();
+        } else {
+            this.updateStatus('Cache cleared', 'connected');
+        }
+    }
+
     // Logout and clear session
-    logout() {
+    async logout() {
         // Close dropdown
         document.getElementById('userDropdown').classList.add('hidden');
 
@@ -483,6 +533,9 @@ class GeoStoriesApp {
         this.currentPubky = null;
         this.clearSession();
         this.clearCookies();
+
+        // Clear all caches
+        await this.cache.clearAllCaches();
 
         // Reset UI
         document.getElementById('authBtnContainer').classList.remove('hidden');
@@ -1019,12 +1072,31 @@ class GeoStoriesApp {
     }
 
     // Load friends who have GeoStory markers
-    async loadFriendsWithMarkers() {
+    async loadFriendsWithMarkers(forceRefresh = false) {
         try {
-            this.log('Loading friends with GeoStory markers...');
-
             const progressBar = document.getElementById('friendsBtnProgress');
             const btnText = document.getElementById('friendsBtnText');
+
+            // Try to load from cache first (unless force refresh)
+            if (!forceRefresh) {
+                const cachedFriends = this.cache.loadFriendsList();
+                if (cachedFriends && cachedFriends.length > 0) {
+                    this.friendsWithMarkers = cachedFriends;
+
+                    // Update button text immediately
+                    if (btnText) {
+                        btnText.textContent = `View Friends (${cachedFriends.length})`;
+                    }
+
+                    // Start background refresh (don't await)
+                    this.refreshFriendsInBackground();
+
+                    return;
+                }
+            }
+
+            // No cache or force refresh - load from network
+            this.log('Loading friends with GeoStory markers from network...');
 
             const followedUsers = await this.getFollowedUsers();
             this.log(`Checking ${followedUsers.length} followed users for markers...`);
@@ -1044,9 +1116,6 @@ class GeoStoriesApp {
 
                 const markerCount = await this.checkUserHasMarkers(pubky);
                 if (markerCount > 0) {
-                    // Add delay to prevent request collisions
-                    //await new Promise(resolve => setTimeout(resolve, 200));
-
                     // Fetch profile information
                     const profile = await this.getProfileInfo(pubky);
 
@@ -1061,6 +1130,9 @@ class GeoStoriesApp {
             }
 
             this.friendsWithMarkers = friendsWithMarkers;
+
+            // Save to cache
+            this.cache.saveFriendsList(friendsWithMarkers);
 
             // Fade out progress bar after completion
             if (progressBar) {
@@ -1117,6 +1189,40 @@ class GeoStoriesApp {
                     });
                 }, 550);
             }
+        }
+    }
+
+    // Refresh friends list in the background (silent update)
+    async refreshFriendsInBackground() {
+        try {
+            const followedUsers = await this.getFollowedUsers();
+            const friendsWithMarkers = [];
+
+            for (const pubky of followedUsers) {
+                const markerCount = await this.checkUserHasMarkers(pubky);
+                if (markerCount > 0) {
+                    const profile = await this.getProfileInfo(pubky);
+                    friendsWithMarkers.push({
+                        pubky: pubky,
+                        markerCount: markerCount,
+                        name: profile.name || pubky.substring(0, 16) + '...',
+                        bio: profile.bio,
+                        image: profile.image
+                    });
+                }
+            }
+
+            // Update cache silently
+            this.cache.saveFriendsList(friendsWithMarkers);
+            this.friendsWithMarkers = friendsWithMarkers;
+
+            // Update button text if it changed
+            const btnText = document.getElementById('friendsBtnText');
+            if (btnText) {
+                btnText.textContent = `View Friends (${friendsWithMarkers.length})`;
+            }
+        } catch (error) {
+            // Silent failure for background refresh
         }
     }
 
@@ -1475,6 +1581,9 @@ class GeoStoriesApp {
             this.updateStatus('Story saved successfully!', 'connected');
             this.showSuccess('Your story has been added to the map!');
 
+            // Invalidate cache for current user
+            await this.cache.clearMarkersForUser(this.currentPubky);
+
             // Add marker to map
             this.addMarkerToMap(marker);
 
@@ -1495,7 +1604,7 @@ class GeoStoriesApp {
     }
 
     // Load markers for a specific user
-    async loadUserMarkers(pubky = null, updateUrl = true) {
+    async loadUserMarkers(pubky = null, updateUrl = true, forceRefresh = false) {
         const targetPubky = pubky || document.getElementById('pubkyInput').value.trim();
 
         if (!targetPubky) {
@@ -1512,6 +1621,34 @@ class GeoStoriesApp {
         }
 
         try {
+            // Try to load from cache first (unless force refresh)
+            if (!forceRefresh) {
+                const cachedMarkers = await this.cache.loadMarkers(cleanPubky);
+                if (cachedMarkers && cachedMarkers.length > 0) {
+                    // Clear existing markers from map
+                    this.clearMapMarkers();
+
+                    // Add cached markers to map
+                    cachedMarkers.forEach(marker => this.addMarkerToMap(marker));
+
+                    // Display marker list
+                    this.displayMarkerList(cachedMarkers);
+                    this.updateStatus(`Loaded ${cachedMarkers.length} marker${cachedMarkers.length !== 1 ? 's' : ''} (cached)`, 'connected', true);
+
+                    // Fit map to show all markers
+                    if (cachedMarkers.length > 0) {
+                        const bounds = L.latLngBounds(cachedMarkers.map(m => [m.latitude, m.longitude]));
+                        this.map.fitBounds(bounds, { padding: [50, 50] });
+                    }
+
+                    // Start background refresh (don't await)
+                    this.refreshMarkersInBackground(cleanPubky);
+
+                    return;
+                }
+            }
+
+            // No cache or force refresh - load from network
             this.updateStatus(`Loading markers for ${cleanPubky.substring(0, 16)}...`, 'testnet');
             document.getElementById('markerList').innerHTML = '<div class="loading">Loading markers...</div>';
 
@@ -1527,6 +1664,8 @@ class GeoStoriesApp {
             if (jsonFiles.length === 0) {
                 document.getElementById('markerList').innerHTML = '<div class="loading">No markers found for this user.</div>';
                 this.updateStatus('No markers found', 'testnet');
+                // Cache empty result to avoid repeated failed requests
+                await this.cache.saveMarkers(cleanPubky, []);
                 return;
             }
 
@@ -1544,6 +1683,9 @@ class GeoStoriesApp {
                 }
             }
 
+            // Save to cache
+            await this.cache.saveMarkers(cleanPubky, markers);
+
             this.displayMarkerList(markers);
             this.updateStatus(`Loaded ${markers.length} marker${markers.length !== 1 ? 's' : ''}`, 'connected', true);
 
@@ -1556,6 +1698,30 @@ class GeoStoriesApp {
             this.showError('Failed to load markers: ' + error.message);
             console.error(error);
             document.getElementById('markerList').innerHTML = '<div class="error">Failed to load markers</div>';
+        }
+    }
+
+    // Refresh markers in the background (silent update)
+    async refreshMarkersInBackground(pubky) {
+        try {
+            const markerPath = `pubky://${pubky}/pub/geostories.app/markers/`;
+            const files = await this.pubky.publicStorage.list(markerPath);
+            const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+            const markers = [];
+            for (const file of jsonFiles) {
+                try {
+                    const marker = await this.pubky.publicStorage.getJson(file);
+                    markers.push(marker);
+                } catch (err) {
+                    console.warn(`Failed to load marker in background: ${file}`, err);
+                }
+            }
+
+            // Update cache silently
+            await this.cache.saveMarkers(pubky, markers);
+        } catch (error) {
+            // Silent failure for background refresh
         }
     }
 
@@ -1913,6 +2079,9 @@ class GeoStoriesApp {
             this.updateStatus('Story updated successfully!', 'connected');
             this.showSuccess('Your story has been updated!');
 
+            // Invalidate cache for current user
+            await this.cache.clearMarkersForUser(this.currentPubky);
+
             // Update the marker in memory
             this.markers.set(markerId, updatedMarker);
 
@@ -1994,6 +2163,9 @@ class GeoStoriesApp {
                     }
                 }
             }
+
+            // Invalidate cache for current user
+            await this.cache.clearMarkersForUser(this.currentPubky);
 
             // Remove from map
             const markerLayer = this.markerLayers.get(markerId);
