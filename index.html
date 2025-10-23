@@ -1218,14 +1218,37 @@
             border-radius: 12px !important;
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18) !important;
             padding: 0 !important;
-            min-width: 260px !important;
+            min-width: 220px !important;
+            max-width: 300px !important;
         }
 
         .leaflet-popup-content {
             margin: 0 !important;
-            padding: 1.2rem 1.4rem !important;
+            padding: 1rem !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
-            min-width: 220px !important;
+            min-width: 200px !important;
+            max-width: 280px !important;
+            max-height: 400px !important;
+            overflow-y: auto !important;
+        }
+
+        /* Popup content scrollbar */
+        .leaflet-popup-content::-webkit-scrollbar {
+            width: 6px !important;
+        }
+
+        .leaflet-popup-content::-webkit-scrollbar-track {
+            background: #f1f1f1 !important;
+            border-radius: 3px !important;
+        }
+
+        .leaflet-popup-content::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border-radius: 3px !important;
+        }
+
+        .leaflet-popup-content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
         }
 
         .leaflet-popup-tip {

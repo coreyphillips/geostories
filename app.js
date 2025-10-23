@@ -1530,15 +1530,15 @@ class GeoStoriesApp {
 
         const popupContent = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
-                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 600; color: #333; line-height: 1.4;">${marker.title}</h3>
-                <p style="margin: 0 0 0.7rem 0; font-size: 0.9rem; color: #555; line-height: 1.6;">${marker.description}</p>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; padding: 0.6rem 0 0.3rem 0; border-top: 1px solid #e8e8f0;">
-                    <small style="color: #667eea; font-size: 0.85rem; font-weight: 600;">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600; color: #333; line-height: 1.3; overflow-wrap: break-word;">${marker.title}</h3>
+                <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #555; line-height: 1.5; overflow-wrap: break-word;">${marker.description}</p>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; padding: 0.5rem 0 0.2rem 0; border-top: 1px solid #e8e8f0;">
+                    <small style="color: #667eea; font-size: 0.8rem; font-weight: 600;">
                         ${authorName}
                     </small>
                     ${colorIndicator}
                 </div>
-                <small style="color: #999; font-size: 0.8rem; display: block;">
+                <small style="color: #999; font-size: 0.75rem; display: block;">
                     ${new Date(marker.timestamp).toLocaleDateString()}
                 </small>
                 ${actionsHtml}
