@@ -1080,16 +1080,16 @@ class GeoStoriesApp {
 
             // Try to load from cache first (unless force refresh)
             if (!forceRefresh) {
-                const cachedFriends = this.cache.loadFriendsList();
-                if (cachedFriends && cachedFriends.length > 0) {
-                    this.friendsWithMarkers = cachedFriends;
+                const cached = this.cache.loadFriendsList();
+                if (cached && cached.data && cached.data.length > 0) {
+                    this.friendsWithMarkers = cached.data;
 
                     // Update button text immediately
                     if (btnText) {
-                        btnText.textContent = `View Friends (${cachedFriends.length})`;
+                        btnText.textContent = `View Friends (${cached.data.length})`;
                     }
 
-                    // Start background refresh (don't await)
+                    // Always start background refresh to keep data fresh
                     this.refreshFriendsInBackground();
 
                     return;
@@ -1624,25 +1624,26 @@ class GeoStoriesApp {
         try {
             // Try to load from cache first (unless force refresh)
             if (!forceRefresh) {
-                const cachedMarkers = await this.cache.loadMarkers(cleanPubky);
-                if (cachedMarkers && cachedMarkers.length > 0) {
+                const cached = await this.cache.loadMarkers(cleanPubky);
+                if (cached && cached.data && cached.data.length > 0) {
                     // Clear existing markers from map
                     this.clearMapMarkers();
 
                     // Add cached markers to map
-                    cachedMarkers.forEach(marker => this.addMarkerToMap(marker));
+                    cached.data.forEach(marker => this.addMarkerToMap(marker));
 
                     // Display marker list
-                    this.displayMarkerList(cachedMarkers);
-                    this.updateStatus(`Loaded ${cachedMarkers.length} marker${cachedMarkers.length !== 1 ? 's' : ''} (cached)`, 'connected', true);
+                    this.displayMarkerList(cached.data);
+
+                    this.updateStatus(`Loaded ${cached.data.length} marker${cached.data.length !== 1 ? 's' : ''}`, 'connected', true);
 
                     // Fit map to show all markers
-                    if (cachedMarkers.length > 0) {
-                        const bounds = L.latLngBounds(cachedMarkers.map(m => [m.latitude, m.longitude]));
+                    if (cached.data.length > 0) {
+                        const bounds = L.latLngBounds(cached.data.map(m => [m.latitude, m.longitude]));
                         this.map.fitBounds(bounds, { padding: [50, 50] });
                     }
 
-                    // Start background refresh (don't await)
+                    // Always start background refresh to keep data fresh
                     this.refreshMarkersInBackground(cleanPubky);
 
                     return;

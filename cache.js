@@ -69,7 +69,7 @@ export class CacheManager {
 
     /**
      * Load friends list from localStorage
-     * Returns null if cache is expired or doesn't exist
+     * Returns cached data with metadata about freshness (never expires, just marks as stale)
      */
     loadFriendsList() {
         try {
@@ -79,16 +79,27 @@ export class CacheManager {
             }
 
             const cacheData = JSON.parse(cached);
-            const age = Date.now() - cacheData.timestamp;
 
-            if (age > this.FRIENDS_CACHE_TTL) {
+            // Validate cache structure
+            if (!cacheData.friends || !cacheData.timestamp) {
+                console.warn('[Cache] Invalid friends cache structure, clearing...');
                 this.clearFriendsCache();
                 return null;
             }
 
-            return cacheData.friends;
+            const age = Date.now() - cacheData.timestamp;
+            const isStale = age > this.FRIENDS_CACHE_TTL;
+
+            // Always return cached data, but include freshness info
+            return {
+                data: cacheData.friends,
+                isStale: isStale,
+                age: age
+            };
         } catch (error) {
             console.error('[Cache] Failed to load friends list:', error);
+            // Clear corrupted cache
+            this.clearFriendsCache();
             return null;
         }
     }
@@ -164,7 +175,7 @@ export class CacheManager {
 
     /**
      * Load markers for a specific user from IndexedDB
-     * Returns null if cache is expired or doesn't exist
+     * Returns cached data with metadata about freshness (never expires, just marks as stale)
      */
     async loadMarkers(pubky) {
         if (!this.db) {
@@ -186,15 +197,23 @@ export class CacheManager {
                         return;
                     }
 
-                    const age = Date.now() - cacheData.timestamp;
-
-                    if (age > this.MARKERS_CACHE_TTL) {
+                    // Validate cache structure
+                    if (!cacheData.markers || !cacheData.timestamp) {
+                        console.warn('[Cache] Invalid markers cache structure, clearing...');
                         this.clearMarkersForUser(pubky);
                         resolve(null);
                         return;
                     }
 
-                    resolve(cacheData.markers);
+                    const age = Date.now() - cacheData.timestamp;
+                    const isStale = age > this.MARKERS_CACHE_TTL;
+
+                    // Always return cached data, but include freshness info
+                    resolve({
+                        data: cacheData.markers,
+                        isStale: isStale,
+                        age: age
+                    });
                 };
 
                 request.onerror = () => {
